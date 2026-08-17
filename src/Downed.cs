@@ -5,7 +5,6 @@ using RagdollPlayer;
 using UnityEngine;
 using Il2CppSLZ.Bonelab;
 using Il2CppSLZ.Marrow;
-using System.Reflection;
 
 [assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.0", "jorink")]
 [assembly: MelonGame("Stress Level Zero", "BONELAB")]
@@ -181,8 +180,7 @@ namespace Downed
             if (!downed && !death)
             {
                 downed = true;
-                TryInvokeLifeSavingDamgeDealt(Player.RigManager.health);
-                Player.RigManager.health.curr_Health = Player.RigManager.health.max_Health * 0.25f;
+                Revive((Player_Health)Player.RigManager.health);
                 startTime = Time.time;
             }
         }
@@ -204,32 +202,11 @@ namespace Downed
             rig.Teleport(teleport);
         }
 
-        private static bool TryInvokeLifeSavingDamgeDealt(object health)
+        private static void Revive(Player_Health health)
         {
-            if (health == null) return false;
+        	if (!health) return;
 
-            try {
-                var target = health;
-                if (!(target is Player_Health) && health is UnityEngine.Component component)
-                {
-                    target = component.gameObject.GetComponent<Player_Health>();
-                    if (target == null) return false;
-                }
-
-                var targetType = target.GetType();
-                var method = targetType.GetMethod("LifeSavingDamgeDealt", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-
-                if (method == null) return false;
-
-                method.Invoke(target, null);
-                return true;
-            }
-
-            catch (System.Exception ex)
-            {
-                MelonLogger.Warning($"Error invoking LifeSavingDamgeDealt: {ex.Message}");
-                return false;
-            }
+        	health.LifeSavingDamgeDealt();
         }
     }
 }
