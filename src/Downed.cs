@@ -1,4 +1,4 @@
-﻿using MelonLoader;
+using MelonLoader;
 using BoneLib;
 using BoneLib.BoneMenu;
 using RagdollPlayer;
@@ -13,20 +13,27 @@ namespace Downed
 {
     public class Core : MelonMod
     {
+        private enum PlayerState
+        {
+            Healthy,
+            Downed,
+            Dead
+        }
+
         MelonPreferences_Category category;
         MelonPreferences_Entry<bool> EnableModEntry;
-        MelonPreferences_Entry<float> KnockedDurationEntry;
 
-        bool downed = false;
-        bool death = false;
-        float startTime = 0f;
+        private PlayerState state = PlayerState.Healthy;
+        private float startTime;
+        private const float ReviveDuration = 5f;
+
         private static float lastTimeInput;
         private static bool ragdollNextButton;
         private const float DoubleTapTimer = 0.32f;
 
         public override void OnInitializeMelon()
         {
-        	base.OnInitializeMelon();
+            base.OnInitializeMelon();
             SetupMelonPreferences();
             SetupBoneMenu();
             Hooking.OnLevelLoaded += OnLevelLoaded;
@@ -36,7 +43,7 @@ namespace Downed
 
         public override void OnDeinitializeMelon()
         {
-        	base.OnDeinitializeMelon();
+            base.OnDeinitializeMelon();
             Hooking.OnLevelLoaded -= OnLevelLoaded;
             Hooking.OnPlayerDamageReceived -= OnPlayerDamageReceived;
             Hooking.OnPlayerDeath -= OnPlayerDeath;
@@ -45,94 +52,72 @@ namespace Downed
         private void SetupBoneMenu()
         {
             BoneLib.BoneMenu.Page defaultPage = BoneLib.BoneMenu.Page.Root.CreatePage("Jorink", Color.red).CreatePage("Downed", Color.magenta);
-
             defaultPage.CreateBool("Enable Mod", Color.blue, EnableModEntry.Value, (a) => { EnableModEntry.Value = a; });
-            defaultPage.CreateFloat("Knocked Duration", Color.yellow, KnockedDurationEntry.Value, 1f, 1f, 10f, (a) => { KnockedDurationEntry.Value = a;});
-
-            defaultPage.CreateFunction("Save Settings", Color.cyan, () => { MelonPreferences.Save(); });                   
+            defaultPage.CreateFunction("Save Settings", Color.cyan, () => { MelonPreferences.Save(); });
         }
 
         private void SetupMelonPreferences()
         {
             category = MelonPreferences.CreateCategory("Downed");
-
             EnableModEntry = category.CreateEntry("Enable Mod", true);
-            KnockedDurationEntry = category.CreateEntry("Knocked Duration", 5f);
-
             MelonPreferences.Save();
             category.SaveToFile();
         }
 
         private void OnLevelLoaded(LevelInfo levelInfo)
         {
-            downed = false;
-            death = false;
+            state = PlayerState.Healthy;
         }
 
         public override void OnUpdate()
         {
+            base.OnUpdate();
             if (!EnableModEntry.Value) return;
-            
+
             var rig = Player.RigManager;
 
-            // Make sure the phys rig exists
-            if (rig && !rig.activeSeat && !UIRig.Instance.popUpMenu.m_IsCursorShown) 
+            // Make sure the phys rig exists and the player isn't seated or in a menu
+            if (rig && !rig.activeSeat && !UIRig.Instance.popUpMenu.m_IsCursorShown)
             {
-                // Toggle ragdoll
-                if (downed)
+                switch (state)
                 {
-                    var physRig = Player.PhysicsRig;
+                    case PlayerState.Downed:
+                    case PlayerState.Dead:
+                        var physRig = Player.PhysicsRig;
 
-                    bool isRagdolled = physRig.torso.shutdown || !physRig.ballLocoEnabled;
+                        if (!IsRagdolled(physRig))
+                        {
+                            RagdollPlayerMod.RagdollRig(rig);
+                        }
 
-                    if (!isRagdolled)
-                    {
-                        RagdollPlayerMod.RagdollRig(rig);
-                    }
-
-                    bool isShutdown = physRig.shutdown;
-
-                    if (death && !isShutdown)
-                    {
-                        physRig.ShutdownRig();
-                    }
+                        if (state == PlayerState.Dead && !physRig.shutdown)
+                        {
+                            physRig.ShutdownRig();
+                        }
+                        break;
                 }
             }
 
             // Timer to unragdoll
-            if (downed && !death)
+            if (state == PlayerState.Downed && Time.time - startTime >= ReviveDuration)
             {
-                if (Time.time - startTime >= KnockedDurationEntry.Value)
-                {
-                    downed = false;
-                    RagdollPlayerMod.UnragdollRig(rig);
-                }
+                state = PlayerState.Healthy;
+                RagdollPlayerMod.UnragdollRig(rig);
             }
 
             // Force unragdoll in case of bug
             var controller = GetController();
             if (!controller) return;
-            bool input = GetInput(controller);
 
-            if (input)
+            if (GetInput(controller) && IsRagdolled(Player.PhysicsRig))
             {
-                var physRig = Player.PhysicsRig;
-                bool isRagdolled = physRig.torso.shutdown || !physRig.ballLocoEnabled;
-                
-                if (isRagdolled)
-                {
-                    downed = false;
-                    death = false;
-                    RagdollPlayerMod.UnragdollRig(rig);
-                }
+                state = PlayerState.Healthy;
+                RagdollPlayerMod.UnragdollRig(rig);
             }
         }
 
-        private static BaseController GetController()
-        {
-            return Player.RightController;
-        }
-        
+        private static BaseController GetController() => Player.RightController;
+
         private static bool GetInput(BaseController controller)
         {
             bool isDown = controller.GetThumbStickDown();
@@ -144,11 +129,9 @@ namespace Downed
                 {
                     return true;
                 }
-                else
-                {
-                    ragdollNextButton = false;
-                    lastTimeInput = 0f;
-                }
+
+                ragdollNextButton = false;
+                lastTimeInput = 0f;
             }
             else if (isDown)
             {
@@ -164,49 +147,48 @@ namespace Downed
             return false;
         }
 
-        private void OnPlayerDamageReceived(Il2CppSLZ.Marrow.RigManager rigManager, float damage)
+        private static bool IsRagdolled(PhysicsRig physRig)
+        {
+            return physRig.torso.shutdown || !physRig.ballLocoEnabled;
+        }
+
+        private void OnPlayerDamageReceived(RigManager rigManager, float damage)
         {
             if (!EnableModEntry.Value) return;
-            if (Player.RigManager.health.curr_Health > 0f) return;
-            
-            // If already downed, set to death.
-            if (downed)
+            if (rigManager.health.curr_Health > 0f) return;
+
+            switch (state)
             {
-                death = true;
-                Player.RigManager.health.Dying(5);
-            }
-            
-            // If not downed or dead, set to downed.
-            if (!downed && !death)
-            {
-                downed = true;
-                Revive((Player_Health)Player.RigManager.health);
-                startTime = Time.time;
+                case PlayerState.Downed:
+                    state = PlayerState.Dead;
+                    rigManager.health.Dying(5);
+                    break;
+
+                case PlayerState.Healthy:
+                    state = PlayerState.Downed;
+                    Revive((Player_Health)rigManager.health);
+                    startTime = Time.time;
+                    break;
             }
         }
 
-        private void OnPlayerDeath(Il2CppSLZ.Marrow.RigManager rigManager)
+        private void OnPlayerDeath(RigManager rigManager)
         {
             if (!EnableModEntry.Value) return;
-            // Reset states and unragdoll
-            var rig = Player.RigManager;
 
-            downed = false;
-            death = false;
-            RagdollPlayerMod.UnragdollRig(rig);
-            
+            state = PlayerState.Healthy;
+            RagdollPlayerMod.UnragdollRig(rigManager);
+
             // Fix flinging on respawn in Fusion lobbies
             var physRig = Player.PhysicsRig;
             var teleport = physRig.feet.transform.position + new Vector3(0, 0.25f, 0);
-            
-            rig.Teleport(teleport);
+            rigManager.Teleport(teleport);
         }
 
         private static void Revive(Player_Health health)
         {
-        	if (!health) return;
-
-        	health.LifeSavingDamgeDealt();
+            if (!health) return;
+            health.LifeSavingDamgeDealt();
         }
     }
 }
