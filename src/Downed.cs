@@ -85,8 +85,6 @@ namespace Downed
 
         private void OnLevelLoaded(LevelInfo levelInfo)
         {
-            Revive(); // Reset everything on level load just to be sure
-
             rig = Player.RigManager;
             physRig = Player.PhysicsRig;
 
@@ -108,6 +106,8 @@ namespace Downed
                 rightHand.gShoulder,
                 rightHand.gElbow,
             };
+            
+            Revive(); // Reset everything on level load just to be sure
         }
 
         private bool IsModAllowed()
@@ -205,14 +205,11 @@ namespace Downed
 
         private IEnumerator BleedOutRoutine()
         {
-            float damagePerSecond = rig.health.curr_Health / BleedOutDuration;
             float elapsed = 0f;
 
             while (state == PlayerState.Downed && elapsed < BleedOutDuration)
             {
                 elapsed += Time.deltaTime;
-                // Keep health just above 0 so nothing else reacts to a "dead" health value before the timer is actually up
-                rig.health.curr_Health = Mathf.Max(rig.health.curr_Health - damagePerSecond * Time.deltaTime, 0.01f);
                 yield return null;
             }
 
@@ -231,18 +228,13 @@ namespace Downed
             bleedOutCoroutine = null;
         }
 
-        private void OnPlayerResurrected(Il2CppSLZ.Marrow.RigManager rigManager)
-        {
-        	if (!IsModAllowed()) return;
-
-        	if (IsRagdolled(physRig))
-        	{
-        		Revive();
-        	}
-        }
-
         private void Revive()
         {
+			if (state == PlayerState.Downed || state == PlayerState.Dead)
+			{
+				rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
+			}
+      
         	StopBleedOut();
         	state = PlayerState.Healthy;
         	isBeingGrabbed = false;
@@ -252,14 +244,15 @@ namespace Downed
         private void KillPlayer()
         {
 			state = PlayerState.Dead;
+			rig.health.curr_Health = 0f;
         	rig.health.Dying(5);
         }
 
         private void DownPlayer()
         {
+        	PreventDeath((Player_Health)rig.health);
         	state = PlayerState.Downed;
         	isBeingGrabbed = false;
-        	PreventDeath((Player_Health)rig.health);
         }
 
         private static BaseController GetController() => Player.RightController;
@@ -301,7 +294,7 @@ namespace Downed
         private void OnPlayerDamageReceived(RigManager rigManager, float damage)
         {
             if (!IsModAllowed()) return;
-            if (rig.health.curr_Health > 0f) return;
+            if (rigManager.health.curr_Health >= 0f) return;
 
             switch (state)
             {
@@ -321,9 +314,14 @@ namespace Downed
             if (StayRagdolledEntry.Value) return;
 
             Revive();
+        }
 
-            // Fix flinging on respawn in Fusion lobbies
-            rigManager.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
+        private void OnPlayerResurrected(Il2CppSLZ.Marrow.RigManager rigManager)
+        {
+        	if (!IsModAllowed()) return;
+        	if (state == PlayerState.Healthy) return;
+        	
+        	Revive();
         }
 
         private static void PreventDeath(Player_Health health)
