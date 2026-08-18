@@ -9,3 +9,7 @@ Last tested on:
 ## Discord Server
 Join the Discord server to chat, give suggestions, report issues, and get sneak peeks!
 https://discord.gg/Tu7Pnq4RV7
+
+## Credits
+Spinny by Lakatrazz, I looked through the code for being grabbed check. <br>
+https://github.com/Lakatrazz/Spinny

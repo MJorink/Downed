@@ -24,8 +24,12 @@ namespace Downed
         MelonPreferences_Entry<bool> EnableModEntry;
 
         private PlayerState state = PlayerState.Healthy;
-        private float startTime;
-        private const float ReviveDuration = 5f;
+
+        private const float ReviveGrabDuration = 5f;
+
+        private static Grip[] playerGrips = System.Array.Empty<Grip>();
+        private bool isBeingGrabbed;
+        private float grabStartTime;
 
         private static float lastTimeInput;
         private static bool ragdollNextButton;
@@ -67,6 +71,39 @@ namespace Downed
         private void OnLevelLoaded(LevelInfo levelInfo)
         {
             state = PlayerState.Healthy;
+            isBeingGrabbed = false;
+
+            var torso = Player.PhysicsRig.torso;
+            var leftHand = Player.PhysicsRig.leftHand.physHand;
+            var rightHand = Player.PhysicsRig.rightHand.physHand;
+
+            playerGrips = new Grip[]
+            {
+                torso.gChest,
+                torso.gHead,
+                torso.gNeck,
+                torso.gPelvis,
+                torso.gSpine,
+
+                leftHand.gShoulder,
+                leftHand.gElbow,
+
+                rightHand.gShoulder,
+                rightHand.gElbow,
+            };
+        }
+
+        private static bool CheckBeingGrabbed()
+        {
+            foreach (var grip in playerGrips)
+            {
+                if (grip.HasAttachedHands())
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public override void OnUpdate()
@@ -98,11 +135,27 @@ namespace Downed
                 }
             }
 
-            // Timer to unragdoll
-            if (state == PlayerState.Downed && Time.time - startTime >= ReviveDuration)
+            // Revive
+            if (state == PlayerState.Downed)
             {
-                state = PlayerState.Healthy;
-                RagdollPlayerMod.UnragdollRig(rig);
+                if (CheckBeingGrabbed())
+                {
+                    if (!isBeingGrabbed)
+                    {
+                        isBeingGrabbed = true;
+                        grabStartTime = Time.time;
+                    }
+                    else if (Time.time - grabStartTime >= ReviveGrabDuration)
+                    {
+                        state = PlayerState.Healthy;
+                        isBeingGrabbed = false;
+                        RagdollPlayerMod.UnragdollRig(rig);
+                    }
+                }
+                else
+                {
+                    isBeingGrabbed = false;
+                }
             }
 
             // Force unragdoll in case of bug
@@ -166,8 +219,8 @@ namespace Downed
 
                 case PlayerState.Healthy:
                     state = PlayerState.Downed;
+                    isBeingGrabbed = false;
                     Revive((Player_Health)rigManager.health);
-                    startTime = Time.time;
                     break;
             }
         }
@@ -177,6 +230,7 @@ namespace Downed
             if (!EnableModEntry.Value) return;
 
             state = PlayerState.Healthy;
+            isBeingGrabbed = false;
             RagdollPlayerMod.UnragdollRig(rigManager);
 
             // Fix flinging on respawn in Fusion lobbies
