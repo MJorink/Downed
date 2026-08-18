@@ -22,8 +22,12 @@ While downed you will bleed out in 20 seconds, bleeding will stop while being gr
 So even if you have 1 second left you can still get revived.
 
 ## Settings
+Enable Mod: <br>
+Enable/Disable the mod. <br>
+
 Stay Ragdolled: <br>
-With this enabled you will not automatically unragdoll, this means you will have to double-press the right joystick to get up!
+With this enabled you will not automatically unragdoll after death, <br>
+this means you will have to double-press the right joystick, or get revived with the Auto Injector to get up! <br>
 
 ## Discord Server
 Join the Discord server to chat, give suggestions, report issues, and get sneak peeks! <br>

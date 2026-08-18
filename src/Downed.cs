@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Linq;
 using MelonLoader;
 using BoneLib;
 using BoneLib.BoneMenu;
@@ -27,6 +29,7 @@ namespace Downed
         private PlayerState state = PlayerState.Healthy;
 
         private const float ReviveGrabDuration = 5f;
+        private const float BleedOutDuration = 20f;
 
         private static Grip[] playerGrips = System.Array.Empty<Grip>();
         private bool isBeingGrabbed;
@@ -38,6 +41,10 @@ namespace Downed
 
         private RigManager rig;
         private PhysicsRig physRig;
+
+        private object bleedOutCoroutine;
+
+        private static bool? fusionInstalled;
 
         public override void OnInitializeMelon()
         {
@@ -78,8 +85,7 @@ namespace Downed
 
         private void OnLevelLoaded(LevelInfo levelInfo)
         {
-            state = PlayerState.Healthy;
-            isBeingGrabbed = false;
+            Revive(); // Reset everything on level load just to be sure
 
             rig = Player.RigManager;
             physRig = Player.PhysicsRig;
@@ -104,6 +110,23 @@ namespace Downed
             };
         }
 
+        private bool IsModAllowed()
+        {
+            if (!EnableModEntry.Value) return false;
+
+            fusionInstalled ??= RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
+            if (!fusionInstalled.Value) return true;
+
+            try
+            {
+                return FusionCompat.IsModAllowed();
+            }
+            catch
+            {
+                return true;
+            }
+        }
+
         private static bool CheckBeingGrabbed()
         {
             foreach (var grip in playerGrips)
@@ -120,7 +143,7 @@ namespace Downed
         public override void OnUpdate()
         {
             base.OnUpdate();
-            if (!EnableModEntry.Value) return;
+            if (!IsModAllowed()) return;
 
             // Make sure the phys rig exists and the player isn't seated or in a menu
             if (rig && !rig.activeSeat && !UIRig.Instance.popUpMenu.m_IsCursorShown)
@@ -132,6 +155,7 @@ namespace Downed
                         if (!IsRagdolled(physRig))
                         {
                             RagdollPlayerMod.RagdollRig(rig);
+                            StartBleedOut();
                         }
 
                         if (state == PlayerState.Dead && !physRig.shutdown)
@@ -154,9 +178,7 @@ namespace Downed
                     }
                     else if (Time.time - grabStartTime >= ReviveGrabDuration)
                     {
-                        state = PlayerState.Healthy;
-                        isBeingGrabbed = false;
-                        RagdollPlayerMod.UnragdollRig(rig);
+                    	Revive();
                     }
                 }
                 else
@@ -171,24 +193,73 @@ namespace Downed
 
             if (GetInput(controller) && IsRagdolled(physRig))
             {
-                ResetState();
+                Revive();
             }
+        }
+
+        private void StartBleedOut()
+        {
+            if (bleedOutCoroutine != null) return;
+            bleedOutCoroutine = MelonCoroutines.Start(BleedOutRoutine());
+        }
+
+        private IEnumerator BleedOutRoutine()
+        {
+            float damagePerSecond = rig.health.curr_Health / BleedOutDuration;
+            float elapsed = 0f;
+
+            while (state == PlayerState.Downed && elapsed < BleedOutDuration)
+            {
+                elapsed += Time.deltaTime;
+                // Keep health just above 0 so nothing else reacts to a "dead" health value before the timer is actually up
+                rig.health.curr_Health = Mathf.Max(rig.health.curr_Health - damagePerSecond * Time.deltaTime, 0.01f);
+                yield return null;
+            }
+
+            bleedOutCoroutine = null;
+
+            if (state == PlayerState.Downed)
+            {
+                KillPlayer();
+            }
+        }
+
+        private void StopBleedOut()
+        {
+            if (bleedOutCoroutine == null) return;
+            MelonCoroutines.Stop(bleedOutCoroutine);
+            bleedOutCoroutine = null;
         }
 
         private void OnPlayerResurrected(Il2CppSLZ.Marrow.RigManager rigManager)
         {
-        	if (!EnableModEntry.Value) return;
+        	if (!IsModAllowed()) return;
 
         	if (IsRagdolled(physRig))
         	{
-        		ResetState();
+        		Revive();
         	}
         }
 
-        private void ResetState()
+        private void Revive()
         {
+        	StopBleedOut();
         	state = PlayerState.Healthy;
+        	isBeingGrabbed = false;
         	RagdollPlayerMod.UnragdollRig(rig);
+        }
+
+        private void KillPlayer()
+        {
+			state = PlayerState.Dead;
+        	rig.health.Dying(5);
+        }
+
+        private void DownPlayer()
+        {
+        	state = PlayerState.Downed;
+        	isBeingGrabbed = false;
+        	PreventDeath((Player_Health)rig.health);
         }
 
         private static BaseController GetController() => Player.RightController;
@@ -229,37 +300,33 @@ namespace Downed
 
         private void OnPlayerDamageReceived(RigManager rigManager, float damage)
         {
-            if (!EnableModEntry.Value) return;
-            if (rigManager.health.curr_Health > 0f) return;
+            if (!IsModAllowed()) return;
+            if (rig.health.curr_Health > 0f) return;
 
             switch (state)
             {
                 case PlayerState.Downed:
-                    state = PlayerState.Dead;
-                    rigManager.health.Dying(5);
+                    KillPlayer();
                     break;
 
                 case PlayerState.Healthy:
-                    state = PlayerState.Downed;
-                    isBeingGrabbed = false;
-                    Revive((Player_Health)rigManager.health);
+                    DownPlayer();
                     break;
             }
         }
 
         private void OnPlayerDeath(RigManager rigManager)
         {
-            if (!EnableModEntry.Value) return;
+            if (!IsModAllowed()) return;
+            if (StayRagdolledEntry.Value) return;
 
-            state = PlayerState.Healthy;
-            isBeingGrabbed = false;
-            RagdollPlayerMod.UnragdollRig(rigManager);
+            Revive();
 
             // Fix flinging on respawn in Fusion lobbies
             rigManager.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
         }
 
-        private static void Revive(Player_Health health)
+        private static void PreventDeath(Player_Health health)
         {
             if (!health) return;
             health.LifeSavingDamgeDealt();
