@@ -2,8 +2,8 @@
 A BoneLab mod that makes you go downed before dying, while downed you can get revived. <br>
 
 Last tested on:
-- Melonloader: 0.7.3
-- Lemonloader: 0.6.5
+- Melonloader: `0.7.3`
+- Lemonloader: `0.6.5`
 - BoneLab: Patch 6
 
 ## How to use
@@ -20,6 +20,11 @@ Ways to get revived while downed: <br>
 
 While downed you will bleed out in 20 seconds, bleeding will stop while being grabbed. <br>
 So even if you have 1 second left you can still get revived.
+
+## Fusion Compatibility
+The mod will automatically disable itself when needed. <br>
+- When fusion knockout setting is enabled (causes issues)
+- When in a fusion gamemode (except for sandbox)
 
 ## Settings
 Enable Mod: <br>
