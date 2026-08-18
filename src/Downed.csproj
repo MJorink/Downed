@@ -58,7 +58,7 @@
 		<Compile Include="FusionCompat.cs"/>
 	</ItemGroup>
 
-	<Target Name="CopyOutput" AfterTargets="Build" Condition="'$(HOME)/repos/Downed/Mods' != ''">
-		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HOME)/repos/Downed/Mods" />
+	<Target Name="CopyOutput" AfterTargets="Build" Condition="'$(HOME)/repos/Downed/Mods/Mods' != ''">
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HOME)/repos/Downed/Mods/Mods" />
 	</Target>	
 </Project>
