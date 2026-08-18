@@ -1,7 +1,7 @@
 {
     "name": "Downed",
     "version_number": "1.1.0",
-    "website_url": "https://github.com/MJorink/BoneLab/tree/Downed",
+    "website_url": "https://github.com/MJorink/Downed",
     "description": "A BoneLab mod that makes you go downed before dying, while downed you can get revived!",
     "dependencies": [
         "bonelib-BoneLib-3.2.2",
