@@ -1,10 +1,10 @@
 # Downed
-A BoneLab mod that makes you go downed before dying, while downed you can get revived. <br>
+A BoneLab mod that makes you go downed before dying, while downed you can get revived! <br>
 
 Last tested on:
 - Melonloader: `0.7.3`
 - Lemonloader: `0.6.5`
-- BoneLab: Patch 6
+- BoneLab: `Patch 6`
 
 ## How to use
 - Install [Ragdoll Player](https://thunderstore.io/c/bonelab/p/Lakatrazz/Ragdoll_Player/) by Lakatrazz

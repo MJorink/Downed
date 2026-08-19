@@ -8,7 +8,7 @@ using UnityEngine;
 using Il2CppSLZ.Bonelab;
 using Il2CppSLZ.Marrow;
 
-[assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.3", "jorink")]
+[assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.4", "jorink")]
 [assembly: MelonGame("Stress Level Zero", "BONELAB")]
 
 namespace Downed
@@ -207,7 +207,7 @@ namespace Downed
         {
             float elapsed = 0f;
 
-            while (state == PlayerState.Downed && elapsed < BleedOutDuration)
+            while (state == PlayerState.Downed && elapsed < BleedOutDuration && isBeingGrabbed == false)
             {
                 elapsed += Time.deltaTime;
                 yield return null;
@@ -250,7 +250,7 @@ namespace Downed
 
         private void DownPlayer()
         {
-        	PreventDeath((Player_Health)rig.health);
+        	PreventDeath(rig.health.TryCast<Player_Health>());
         	state = PlayerState.Downed;
         	isBeingGrabbed = false;
         }
