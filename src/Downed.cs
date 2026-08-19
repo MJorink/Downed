@@ -8,7 +8,7 @@ using UnityEngine;
 using Il2CppSLZ.Bonelab;
 using Il2CppSLZ.Marrow;
 
-[assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.0", "jorink")]
+[assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.3", "jorink")]
 [assembly: MelonGame("Stress Level Zero", "BONELAB")]
 
 namespace Downed
