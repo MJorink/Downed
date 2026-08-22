@@ -9,7 +9,7 @@ namespace Downed
         {
             if (!LabFusion.Network.NetworkInfo.HasServer) return true;
             if (LabFusion.SDK.Gamemodes.GamemodeManager.ActiveGamemode != null) return false;
-
+            
             return !LabFusion.Preferences.Server.SavedServerSettings.Knockout.Value;
         }
     }
