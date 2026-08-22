@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Linq;
 using MelonLoader;
 using BoneLib;
 using BoneLib.BoneMenu;
@@ -22,51 +21,40 @@ namespace Downed
             Dead
         }
 
-        MelonPreferences_Category category;
-        MelonPreferences_Entry<bool> EnableModEntry;
-        MelonPreferences_Entry<bool> StayRagdolledEntry;
+        private static MelonPreferences_Category category;
+        private static MelonPreferences_Entry<bool> EnableModEntry;
+        private static MelonPreferences_Entry<bool> StayRagdolledEntry;
 
-        private PlayerState state = PlayerState.Healthy;
+        private static PlayerState state = PlayerState.Healthy;
+
+        private static BaseController GetController() => Player.RightController;
 
         private const float ReviveGrabDuration = 5f;
         private const float BleedOutDuration = 20f;
 
         private static Grip[] playerGrips = System.Array.Empty<Grip>();
-        private bool isBeingGrabbed;
-        private float grabStartTime;
+        private static bool isBeingGrabbed;
+        private static float grabStartTime;
 
         private static float lastTimeInput;
         private static bool ragdollNextButton;
         private const float DoubleTapTimer = 0.32f;
 
-        private RigManager rig;
-        private PhysicsRig physRig;
+        private static RigManager rig;
+        private static PhysicsRig physRig;
 
-        private object bleedOutCoroutine;
+        private static object bleedOutCoroutine;
 
         private static bool? fusionInstalled;
 
         public override void OnInitializeMelon()
         {
-            base.OnInitializeMelon();
             SetupMelonPreferences();
             SetupBoneMenu();
-            Hooking.OnLevelLoaded += OnLevelLoaded;
-            Hooking.OnPlayerDamageReceived += OnPlayerDamageReceived;
-            Hooking.OnPlayerResurrected += OnPlayerResurrected;
-            Hooking.OnPlayerDeath += OnPlayerDeath;
+            SetupHooks();
         }
 
-        public override void OnDeinitializeMelon()
-        {
-            base.OnDeinitializeMelon();
-            Hooking.OnLevelLoaded -= OnLevelLoaded;
-            Hooking.OnPlayerDamageReceived -= OnPlayerDamageReceived;
-            Hooking.OnPlayerResurrected -= OnPlayerResurrected;
-            Hooking.OnPlayerDeath -= OnPlayerDeath;
-        }
-
-        private void SetupBoneMenu()
+        private static void SetupBoneMenu()
         {
             BoneLib.BoneMenu.Page defaultPage = BoneLib.BoneMenu.Page.Root.CreatePage("Jorink", Color.red).CreatePage("Downed", Color.magenta);
             defaultPage.CreateBool("Enable Mod", Color.blue, EnableModEntry.Value, (a) => { EnableModEntry.Value = a; });
@@ -74,7 +62,7 @@ namespace Downed
             defaultPage.CreateFunction("Save Settings", Color.cyan, () => { MelonPreferences.Save(); });
         }
 
-        private void SetupMelonPreferences()
+        private static void SetupMelonPreferences()
         {
             category = MelonPreferences.CreateCategory("Downed");
             EnableModEntry = category.CreateEntry("Enable Mod", true);
@@ -83,7 +71,15 @@ namespace Downed
             category.SaveToFile();
         }
 
-        private void OnLevelLoaded(LevelInfo levelInfo)
+        private static void SetupHooks()
+        {
+        	Hooking.OnLevelLoaded += OnLevelLoaded;
+        	Hooking.OnPlayerDamageReceived += OnPlayerDamageReceived;
+        	Hooking.OnPlayerResurrected += OnPlayerResurrected;
+        	Hooking.OnPlayerDeath += OnPlayerDeath;
+        }
+
+        private static void OnLevelLoaded(LevelInfo levelInfo)
         {
             rig = Player.RigManager;
             physRig = Player.PhysicsRig;
@@ -110,7 +106,7 @@ namespace Downed
             Revive(); // Reset everything on level load just to be sure
         }
 
-        private bool IsModAllowed()
+        private static bool IsModAllowed()
         {
             if (!EnableModEntry.Value) return false;
 
@@ -142,10 +138,8 @@ namespace Downed
 
         public override void OnUpdate()
         {
-            base.OnUpdate();
             if (!IsModAllowed()) return;
 
-            // Make sure the phys rig exists and the player isn't seated or in a menu
             if (rig && !rig.activeSeat && !UIRig.Instance.popUpMenu.m_IsCursorShown)
             {
                 switch (state)
@@ -166,7 +160,7 @@ namespace Downed
                 }
             }
 
-            // Revive
+            // Revive check
             if (state == PlayerState.Downed)
             {
                 if (CheckBeingGrabbed())
@@ -197,13 +191,13 @@ namespace Downed
             }
         }
 
-        private void StartBleedOut()
+        private static void StartBleedOut()
         {
             if (bleedOutCoroutine != null) return;
             bleedOutCoroutine = MelonCoroutines.Start(BleedOutRoutine());
         }
 
-        private IEnumerator BleedOutRoutine()
+        private static IEnumerator BleedOutRoutine()
         {
             float elapsed = 0f;
 
@@ -221,41 +215,42 @@ namespace Downed
             }
         }
 
-        private void StopBleedOut()
+        private static void StopBleedOut()
         {
             if (bleedOutCoroutine == null) return;
             MelonCoroutines.Stop(bleedOutCoroutine);
             bleedOutCoroutine = null;
         }
 
-        private void Revive()
+        private static void Revive()
         {
 			if (state == PlayerState.Downed || state == PlayerState.Dead)
 			{
 				rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
 			}
-      
+			
         	StopBleedOut();
         	state = PlayerState.Healthy;
         	isBeingGrabbed = false;
-        	RagdollPlayerMod.UnragdollRig(rig);
+        	if (IsRagdolled(physRig))
+        	{
+        		RagdollPlayerMod.UnragdollRig(rig);
+        	}
         }
 
-        private void KillPlayer()
+        private static void KillPlayer()
         {
 			state = PlayerState.Dead;
 			rig.health.curr_Health = 0f;
         	rig.health.Dying(5);
         }
 
-        private void DownPlayer()
+        private static void DownPlayer()
         {
-        	PreventDeath(rig.health.TryCast<Player_Health>());
+        	rig.health.TryCast<Player_Health>().LifeSavingDamgeDealt(); // Using Revive() from the game causes flinging in fusion
         	state = PlayerState.Downed;
         	isBeingGrabbed = false;
         }
-
-        private static BaseController GetController() => Player.RightController;
 
         private static bool GetInput(BaseController controller)
         {
@@ -291,7 +286,7 @@ namespace Downed
             return physRig.torso.shutdown || !physRig.ballLocoEnabled;
         }
 
-        private void OnPlayerDamageReceived(RigManager rigManager, float damage)
+        private static void OnPlayerDamageReceived(RigManager rigManager, float damage)
         {
             if (!IsModAllowed()) return;
             if (rigManager.health.curr_Health >= 0f) return;
@@ -308,7 +303,7 @@ namespace Downed
             }
         }
 
-        private void OnPlayerDeath(RigManager rigManager)
+        private static void OnPlayerDeath(RigManager rigManager)
         {
             if (!IsModAllowed()) return;
             if (StayRagdolledEntry.Value) return;
@@ -316,18 +311,13 @@ namespace Downed
             Revive();
         }
 
-        private void OnPlayerResurrected(Il2CppSLZ.Marrow.RigManager rigManager)
+		// Used for reviving with SDK mods, like the Signalis Auto Injector
+        private static void OnPlayerResurrected(Il2CppSLZ.Marrow.RigManager rigManager)
         {
         	if (!IsModAllowed()) return;
         	if (state == PlayerState.Healthy) return;
         	
         	Revive();
-        }
-
-        private static void PreventDeath(Player_Health health)
-        {
-            if (!health) return;
-            health.LifeSavingDamgeDealt();
         }
     }
 }
