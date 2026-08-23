@@ -46,7 +46,6 @@
 
 	<ItemGroup>
 		<Compile Include="Downed.cs"/>
-		<Compile Include="FusionCompat.cs"/>
 	</ItemGroup>
 
 	<Target Name="CopyOutput" AfterTargets="Build" Condition="'$(HOME)/repos/Downed/docs/Mods' != ''">

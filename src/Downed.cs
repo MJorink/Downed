@@ -7,7 +7,7 @@ using UnityEngine;
 using Il2CppSLZ.Bonelab;
 using Il2CppSLZ.Marrow;
 
-[assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.4", "jorink")]
+[assembly: MelonInfo(typeof(Downed.Core), "Downed", "1.1.5", "jorink")]
 [assembly: MelonGame("Stress Level Zero", "BONELAB")]
 
 namespace Downed
@@ -24,42 +24,25 @@ namespace Downed
         private static MelonPreferences_Category category;
         private static MelonPreferences_Entry<bool> EnableModEntry;
         private static MelonPreferences_Entry<bool> StayRagdolledEntry;
-
+        
         private static PlayerState state = PlayerState.Healthy;
-
+        
         private static BaseController GetController() => Player.RightController;
-
-        private const float ReviveGrabDuration = 5f;
-        private const float BleedOutDuration = 20f;
-
         private static Grip[] playerGrips = System.Array.Empty<Grip>();
-        private static bool isBeingGrabbed;
-        private static float grabStartTime;
-
-        private static float lastTimeInput;
-        private static bool ragdollNextButton;
-        private const float DoubleTapTimer = 0.32f;
+        
+        private static bool isBeingRevived;
+        
+        private static object bleedOutCoroutine;
+        private static float currentTime;
 
         private static RigManager rig;
         private static PhysicsRig physRig;
-
-        private static object bleedOutCoroutine;
-
-        private static bool? fusionInstalled;
 
         public override void OnInitializeMelon()
         {
             SetupMelonPreferences();
             SetupBoneMenu();
             SetupHooks();
-        }
-
-        private static void SetupBoneMenu()
-        {
-            BoneLib.BoneMenu.Page defaultPage = BoneLib.BoneMenu.Page.Root.CreatePage("Jorink", Color.red).CreatePage("Downed", Color.magenta);
-            defaultPage.CreateBool("Enable Mod", Color.blue, EnableModEntry.Value, (a) => { EnableModEntry.Value = a; });
-            defaultPage.CreateBool("Stay Ragdolled", Color.green, StayRagdolledEntry.Value, (a) => { StayRagdolledEntry.Value = a; });
-            defaultPage.CreateFunction("Save Settings", Color.cyan, () => { MelonPreferences.Save(); });
         }
 
         private static void SetupMelonPreferences()
@@ -69,6 +52,14 @@ namespace Downed
             StayRagdolledEntry = category.CreateEntry("Stay Ragdolled", false);
             MelonPreferences.Save();
             category.SaveToFile();
+        }
+
+        private static void SetupBoneMenu()
+        {
+            BoneLib.BoneMenu.Page defaultPage = BoneLib.BoneMenu.Page.Root.CreatePage("Jorink", Color.red).CreatePage("Downed", Color.magenta);
+            defaultPage.CreateBool("Enable Mod", Color.blue, EnableModEntry.Value, (a) => { EnableModEntry.Value = a; });
+            defaultPage.CreateBool("Stay Ragdolled", Color.green, StayRagdolledEntry.Value, (a) => { StayRagdolledEntry.Value = a; });
+            defaultPage.CreateFunction("Save Settings", Color.cyan, () => { MelonPreferences.Save(); });
         }
 
         private static void SetupHooks()
@@ -102,28 +93,27 @@ namespace Downed
                 rightHand.gShoulder,
                 rightHand.gElbow,
             };
-            
-            Revive(); // Reset everything on level load just to be sure
+
+            if (IsModAllowed())
+            {
+            	Revive(); // Reset everything on level load just to be sure
+            }
         }
 
         private static bool IsModAllowed()
         {
-            if (!EnableModEntry.Value) return false;
+            if (!EnableModEntry.Value || !rig || rig.activeSeat || UIRig.Instance.popUpMenu.m_IsCursorShown) return false;
 
-            fusionInstalled ??= RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
-            if (!fusionInstalled.Value) return true;
-
-            try
-            {
-                return FusionCompat.IsModAllowed();
-            }
-            catch
-            {
-                return true;
-            }
+            bool? isFusionInstalled = false;
+            isFusionInstalled ??= RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
+            if (!isFusionInstalled.Value) return true;
+            
+            if (!LabFusion.Network.NetworkInfo.HasServer) return true;
+            if (LabFusion.SDK.Gamemodes.GamemodeManager.ActiveGamemode != null) return false;
+            return !LabFusion.Preferences.Server.SavedServerSettings.Knockout.Value;
         }
 
-        private static bool CheckBeingGrabbed()
+        private static bool isBeingGrabbed()
         {
             foreach (var grip in playerGrips)
             {
@@ -139,77 +129,85 @@ namespace Downed
         public override void OnUpdate()
         {
             if (!IsModAllowed()) return;
+            
+            currentTime = Time.time;
 
-            if (rig && !rig.activeSeat && !UIRig.Instance.popUpMenu.m_IsCursorShown)
+            if (isDowned() || isDead())
             {
-                switch (state)
-                {
-                    case PlayerState.Downed:
-                    case PlayerState.Dead:
-                        if (!IsRagdolled(physRig))
-                        {
-                            RagdollPlayerMod.RagdollRig(rig);
-                            StartBleedOut();
-                        }
+            	if (!isRagdolled(physRig))
+            	{
+            		RagdollPlayerMod.RagdollRig(rig);
+            		StartBleedOut();
+            		return;
+            	}
 
-                        if (state == PlayerState.Dead && !physRig.shutdown)
-                        {
-                            physRig.ShutdownRig();
-                        }
-                        break;
-                }
+            	if (isDead() && !physRig.shutdown)
+            	{
+            		physRig.ShutdownRig();
+            		return;
+            	}
             }
 
-            // Revive check
-            if (state == PlayerState.Downed)
+            if (isRevived())
             {
-                if (CheckBeingGrabbed())
-                {
-                    if (!isBeingGrabbed)
-                    {
-                        isBeingGrabbed = true;
-                        grabStartTime = Time.time;
-                    }
-                    else if (Time.time - grabStartTime >= ReviveGrabDuration)
-                    {
-                    	Revive();
-                    }
-                }
-                else
-                {
-                    isBeingGrabbed = false;
-                }
-            }
-
-            // Force unragdoll in case of bug
-            var controller = GetController();
-            if (!controller) return;
-
-            if (GetInput(controller) && IsRagdolled(physRig))
-            {
-                Revive();
-            }
+            	Revive();
+            }            
         }
 
-        private static void StartBleedOut()
+        private static bool isDead()
         {
-            if (bleedOutCoroutine != null) return;
+        	return state == PlayerState.Dead;
+        }
+        
+        private static bool isDowned()
+        {
+        	return state == PlayerState.Downed;
+        }
+
+        private static bool isRevived()
+        {
+        	if (GetReviveInput(GetController()) && isRagdolled(physRig)) return true; // Force revive
+
+        	var grabStartTime = 0f;
+        	const float ReviveDuration = 5f;
+        	
+        	if (isDowned() && isBeingGrabbed())
+        	{
+        		if (isBeingRevived)
+        		{
+        			if (currentTime - grabStartTime >= ReviveDuration) return true;
+        			return false;
+        		}
+        		isBeingRevived = true;
+        		grabStartTime = currentTime;
+        		return false;
+        	}
+        	isBeingRevived = false;
+        	return false;
+        }
+
+        private static bool StartBleedOut()
+        {
+            if (bleedOutCoroutine != null) return false;
             bleedOutCoroutine = MelonCoroutines.Start(BleedOutRoutine());
+            return true;
         }
 
         private static IEnumerator BleedOutRoutine()
         {
             float elapsed = 0f;
+            const float BleedOutDuration = 20f;
 
-            while (state == PlayerState.Downed && elapsed < BleedOutDuration && isBeingGrabbed == false)
+            while (isDowned() && elapsed < BleedOutDuration)
             {
+            	if (isBeingRevived) yield return null;
                 elapsed += Time.deltaTime;
                 yield return null;
             }
 
             bleedOutCoroutine = null;
 
-            if (state == PlayerState.Downed)
+            if (isDowned())
             {
                 KillPlayer();
             }
@@ -224,16 +222,13 @@ namespace Downed
 
         private static void Revive()
         {
-			if (state == PlayerState.Downed || state == PlayerState.Dead)
-			{
-				rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
-			}
-			
-        	StopBleedOut();
+        	isBeingRevived = false;
         	state = PlayerState.Healthy;
-        	isBeingGrabbed = false;
-        	if (IsRagdolled(physRig))
+        	StopBleedOut();
+
+        	if (isRagdolled(physRig))
         	{
+        		rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
         		RagdollPlayerMod.UnragdollRig(rig);
         	}
         }
@@ -247,19 +242,24 @@ namespace Downed
 
         private static void DownPlayer()
         {
-        	rig.health.TryCast<Player_Health>().LifeSavingDamgeDealt(); // Using Revive() from the game causes flinging in fusion
+        	// Prevents death, using Revive() from the game causes flinging in fusion.
+        	Player_Health playerHealth = rig.health.TryCast<Player_Health>();
+        	
         	state = PlayerState.Downed;
-        	isBeingGrabbed = false;
+        	playerHealth.LifeSavingDamgeDealt();
         }
 
-        private static bool GetInput(BaseController controller)
+        private static bool GetReviveInput(BaseController controller)
         {
             bool isDown = controller.GetThumbStickDown();
-            float time = Time.time;
+            float lastTimeInput = 0f;
+            bool ragdollNextButton = false;
+            const float DoubleTapTimer = 0.32f;
+            
 
             if (isDown && ragdollNextButton)
             {
-                if (time - lastTimeInput <= DoubleTapTimer)
+                if (currentTime - lastTimeInput <= DoubleTapTimer)
                 {
                     return true;
                 }
@@ -269,10 +269,10 @@ namespace Downed
             }
             else if (isDown)
             {
-                lastTimeInput = time;
+                lastTimeInput = currentTime;
                 ragdollNextButton = true;
             }
-            else if (time - lastTimeInput > DoubleTapTimer)
+            else if (currentTime - lastTimeInput > DoubleTapTimer)
             {
                 ragdollNextButton = false;
                 lastTimeInput = 0f;
@@ -281,7 +281,7 @@ namespace Downed
             return false;
         }
 
-        private static bool IsRagdolled(PhysicsRig physRig)
+        private static bool isRagdolled(PhysicsRig physRig)
         {
             return physRig.torso.shutdown || !physRig.ballLocoEnabled;
         }
@@ -305,18 +305,14 @@ namespace Downed
 
         private static void OnPlayerDeath(RigManager rigManager)
         {
-            if (!IsModAllowed()) return;
-            if (StayRagdolledEntry.Value) return;
-
+            if (!IsModAllowed() || StayRagdolledEntry.Value) return;
             Revive();
         }
 
-		// Used for reviving with SDK mods, like the Signalis Auto Injector
+		// Used for reviving with SDK mods
         private static void OnPlayerResurrected(Il2CppSLZ.Marrow.RigManager rigManager)
         {
-        	if (!IsModAllowed()) return;
-        	if (state == PlayerState.Healthy) return;
-        	
+        	if (!IsModAllowed() || state == PlayerState.Healthy) return;
         	Revive();
         }
     }
