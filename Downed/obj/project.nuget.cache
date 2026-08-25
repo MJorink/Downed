@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "tntiWvdlljk=",
+  "dgSpecHash": "svwzHQBF0AM=",
   "success": true,
-  "projectFilePath": "/home/jorink/repos/Downed-Remake/Downed/Downed.csproj",
+  "projectFilePath": "/home/jorink/repos/Downed/Downed/Downed.csproj",
   "expectedPackageFiles": [
     "/home/jorink/.nuget/packages/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg.sha512",
     "/home/jorink/.nuget/packages/microsoft.aspnetcore.app.ref/6.0.36/microsoft.aspnetcore.app.ref.6.0.36.nupkg.sha512"

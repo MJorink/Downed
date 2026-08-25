@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/jorink/repos/Downed-Remake/Downed/Downed.csproj": {}
+    "/home/jorink/repos/Downed/Downed/Downed.csproj": {}
   },
   "projects": {
-    "/home/jorink/repos/Downed-Remake/Downed/Downed.csproj": {
+    "/home/jorink/repos/Downed/Downed/Downed.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/jorink/repos/Downed-Remake/Downed/Downed.csproj",
+        "projectUniqueName": "/home/jorink/repos/Downed/Downed/Downed.csproj",
         "projectName": "Downed",
-        "projectPath": "/home/jorink/repos/Downed-Remake/Downed/Downed.csproj",
+        "projectPath": "/home/jorink/repos/Downed/Downed/Downed.csproj",
         "packagesPath": "/home/jorink/.nuget/packages/",
-        "outputPath": "/home/jorink/repos/Downed-Remake/Downed/obj/",
+        "outputPath": "/home/jorink/repos/Downed/Downed/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/jorink/.nuget/NuGet/NuGet.Config"
