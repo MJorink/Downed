@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "tntiWvdlljk=",
+  "success": true,
+  "projectFilePath": "/home/jorink/repos/Downed-Remake/Downed/Downed.csproj",
+  "expectedPackageFiles": [
+    "/home/jorink/.nuget/packages/microsoft.netcore.app.ref/6.0.36/microsoft.netcore.app.ref.6.0.36.nupkg.sha512",
+    "/home/jorink/.nuget/packages/microsoft.aspnetcore.app.ref/6.0.36/microsoft.aspnetcore.app.ref.6.0.36.nupkg.sha512"
+  ],
+  "logs": []
+}

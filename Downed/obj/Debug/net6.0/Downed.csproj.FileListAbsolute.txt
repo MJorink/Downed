@@ -1,0 +1,3 @@
+/home/jorink/repos/Downed-Remake/Downed/obj/Debug/net6.0/Downed.csproj.AssemblyReference.cache
+/home/jorink/repos/Downed-Remake/Downed/obj/Debug/net6.0/Downed.GeneratedMSBuildEditorConfig.editorconfig
+/home/jorink/repos/Downed-Remake/Downed/obj/Debug/net6.0/Downed.csproj.CoreCompileInputs.cache
