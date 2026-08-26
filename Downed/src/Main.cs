@@ -80,7 +80,8 @@ namespace Downed
 
 		private static bool FusionCompat()
 		{
-			bool isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
+			//bool isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
+			bool isFusionInstalled = BoneLib.HelperMethods.CheckIfAssemblyLoaded("LabFusion");
 			if (!isFusionInstalled) return true;
 
 			if (!LabFusion.Network.NetworkInfo.HasServer) return true;
