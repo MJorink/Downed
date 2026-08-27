@@ -38,7 +38,7 @@
 		  <HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Assembly-CSharp.dll</HintPath>
 		</Reference>
 	</ItemGroup>	
-	<Target Name="CopyOutput" AfterTargets="Build" Condition="'$(HOME)/repos/Downed/Staging/Thunderstore/Mods' != ''">
+	<Target Name="CopyOutput" AfterTargets="Build">
 		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HOME)/repos/Downed/Staging/Thunderstore/Mods"/>
 	</Target>
 </Project>
