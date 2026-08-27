@@ -36,6 +36,9 @@ namespace Downed
 		private static object bleedOutCoroutine;
 		private static float currentTime;
 
+		private static float lastTimeInput;
+		private static bool ragdollNextButton;
+
 		public override void OnInitializeMelon()
 		{
 			SetupMelonPreferences();
@@ -45,8 +48,7 @@ namespace Downed
 
 		private void SetupMelonPreferences()
 		{
-			MelonPreferences_Category category;
-			category = MelonPreferences.CreateCategory("Downed");
+			var category = MelonPreferences.CreateCategory("Downed");
 
 			enableMod = category.CreateEntry("Enable Mod", true);
 			stayRagdolled = category.CreateEntry("Stay Ragdolled", false);
@@ -80,8 +82,7 @@ namespace Downed
 
 		private static bool FusionCompat()
 		{
-			//bool isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
-			bool isFusionInstalled = BoneLib.HelperMethods.CheckIfAssemblyLoaded("LabFusion");
+			bool isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
 			if (!isFusionInstalled) return true;
 
 			if (!LabFusion.Network.NetworkInfo.HasServer) return true;
@@ -130,7 +131,7 @@ namespace Downed
 				RagdollPlayerMod.RagdollRig(rig);
 				StartBleedOut();
 			}
-			else if (isDead() && !physRig.shutdown)
+			else if (state == PlayerState.Dead && !physRig.shutdown)
 			{
 				physRig.ShutdownRig();
 			}
@@ -168,11 +169,6 @@ namespace Downed
 		{
 			if (!isModAllowed() || state == PlayerState.Default) return;
 			Revive();
-		}
-
-		private static bool isDead()
-		{
-			return state == PlayerState.Dead;
 		}
 
 		private static bool isDowned()
@@ -249,10 +245,7 @@ namespace Downed
 		private static bool forceReviveInput(BaseController controller)
 		{
 		    bool isDown = controller.GetThumbStickDown();
-		    float lastTimeInput = 0f;
-		    bool ragdollNextButton = false;
 		    const float DoubleTapTimer = 0.32f;
-		    
 
 		    if (isDown && ragdollNextButton) // Double click
 		    {
