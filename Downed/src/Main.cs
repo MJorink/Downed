@@ -54,7 +54,6 @@ namespace Downed
 			stayRagdolled = category.CreateEntry("Stay Ragdolled", false);
 
 			MelonPreferences.Save();
-			category.SaveToFile();
 		}
 
 		private void SetupBoneMenu()
