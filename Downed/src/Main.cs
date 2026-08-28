@@ -75,7 +75,7 @@ namespace Downed
 
 		private static bool isModAllowed()
 		{
-			if (!enableMod.Value || !rig || rig.activeSeat || UIRig.Instance.popUpMenu.m_IsCursorShown) return false;
+			if (!enableMod.Value || !rig || !physRig || !controller) return false;
 			return FusionCompat();
 		}
 
@@ -125,7 +125,7 @@ namespace Downed
 			if (!isModAllowed()) return;
 			currentTime = Time.time;
 
-			if (isDowned() && !isRagdolled(physRig))
+			if (isDowned() && !isRagdolled(physRig) && !UIRig.Instance.popUpMenu.m_IsCursorShown && !rig.activeSeat)
 			{
 				RagdollPlayerMod.RagdollRig(rig);
 				StartBleedOut();
@@ -270,11 +270,11 @@ namespace Downed
 		    return false;
 		}
 
-        private static bool StartBleedOut()
+        private static void StartBleedOut()
         {
-            if (bleedOutCoroutine != null) return false;
+            if (bleedOutCoroutine != null) return;
             bleedOutCoroutine = MelonCoroutines.Start(BleedOutRoutine());
-            return true;
+            return;
         }
 
         private static IEnumerator BleedOutRoutine()
