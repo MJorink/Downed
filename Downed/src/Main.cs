@@ -58,7 +58,7 @@ namespace Downed
 
 		private void SetupBoneMenu()
 		{
-			BoneLib.BoneMenu.Page defaultPage = BoneLib.BoneMenu.Page.Root.CreatePage("Jorink", Color.red).CreatePage("Downed", Color.magenta); // Change color!
+			BoneLib.BoneMenu.Page defaultPage = BoneLib.BoneMenu.Page.Root.CreatePage("Jorink", Color.red).CreatePage("Downed", Color.magenta);
 
 			defaultPage.CreateBool("Enable Mod", Color.green, enableMod.Value, (value) => { enableMod.Value = value; });
 			defaultPage.CreateBool("Stay Ragdolled", Color.green, stayRagdolled.Value, (a) => { stayRagdolled.Value = a; });
@@ -148,19 +148,19 @@ namespace Downed
 		    switch (state)
 		    {
 		    	case PlayerState.Default:
-		    	    DownPlayer();
-		    	    break;
+		    		DownPlayer();
+		    		break;
 
-		        case PlayerState.Downed:
-		            KillPlayer();
-		            break;
+		    	case PlayerState.Downed:
+		    		KillPlayer();
+		    		break;
 		    }
 		}
 
 		private static void OnPlayerDeath(RigManager rig)
 		{
 		    if (!isModAllowed() || stayRagdolled.Value) return;
-		    Revive();
+		    //Revive(); // Check if this fixed not going down.
 		}
 
 		// Used for reviving with SDK mods
