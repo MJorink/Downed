@@ -31,10 +31,12 @@ namespace Downed
 		private static Grip[] playerGrips = System.Array.Empty<Grip>();
 		private static RigManager rig;
 		private static PhysicsRig physRig;
+		private static Player_Health playerHealth;
 
+		private static float grabStartTime;
 		private static bool reviveStarted;
+		private static bool firstSkipped;
 		private static object bleedOutCoroutine;
-		private static float currentTime;
 
 		private static float lastTimeInput;
 		private static bool ragdollNextButton;
@@ -94,6 +96,7 @@ namespace Downed
 			rig = Player.RigManager;
 			physRig = Player.PhysicsRig;
 			controller = Player.RightController;
+			playerHealth = rig.health.TryCast<Player_Health>();
 
 			var torso = physRig.torso;
 			var leftHand = physRig.leftHand.physHand;
@@ -123,9 +126,8 @@ namespace Downed
 		public override void OnUpdate()
 		{
 			if (!isModAllowed()) return;
-			currentTime = Time.time;
 
-			if (isDowned() && !isRagdolled(physRig) && !UIRig.Instance.popUpMenu.m_IsCursorShown && !rig.activeSeat)
+			if (isDowned() && !isRagdolled() && !UIRig.Instance.popUpMenu.m_IsCursorShown && !rig.activeSeat)
 			{
 				RagdollPlayerMod.RagdollRig(rig);
 				StartBleedOut();
@@ -143,7 +145,7 @@ namespace Downed
 		private static void OnPlayerDamageReceived(RigManager rig, float damage)
 		{
 		    if (!isModAllowed()) return;
-		    if (rig.health.curr_Health >= 0f) return;
+		    if (rig.health.curr_Health > 0f) return;
 
 		    switch (state)
 		    {
@@ -160,13 +162,26 @@ namespace Downed
 		private static void OnPlayerDeath(RigManager rig)
 		{
 		    if (!isModAllowed() || stayRagdolled.Value) return;
-		    //Revive(); // Check if this fixed not going down.
+		    Revive();
 		}
 
 		// Used for reviving with SDK mods
 		private static void OnPlayerResurrected(RigManager rig)
 		{
 			if (!isModAllowed() || state == PlayerState.Default) return;
+			
+			if (isDowned())
+			{
+				// Skip first revive because LifeSavingDamgeDealt() will trigger OnPlayerResurrected() in DownPlayer().
+				if (firstSkipped)
+				{
+					Revive();
+					return;
+				}
+				
+				firstSkipped = true;
+				return;
+			}
 			Revive();
 		}
 
@@ -177,45 +192,34 @@ namespace Downed
 
 		private static bool reviveChecks()
 		{
-			if (forceReviveInput(controller) && isRagdolled(physRig)) return true; // Force revive
+			if (forceReviveInput() && isRagdolled()) return true; // Force revive
 
-			var grabStartTime = 0f;
 			const float ReviveDuration = 5f;
 
-			if (isDowned() && grabChecks())
+			if (isDowned() && playerGrips.Any(g => g.HasAttachedHands()))
 			{
 				if (reviveStarted)
 				{
-					if (currentTime - grabStartTime >= ReviveDuration) return true;
+					if (Time.time - grabStartTime >= ReviveDuration) return true;
 					return false;
 				}
 				
 				reviveStarted = true;
-				grabStartTime = currentTime;
+				grabStartTime = Time.time;
 				return false;
 			}
-
+			
+			firstSkipped = false;
 			reviveStarted = false;
 			return false;
 		}
 
-		private static bool grabChecks()
-		{
-		    foreach (var grip in playerGrips)
-		    {
-		        if (grip.HasAttachedHands()) return true;
-		    }
-
-		    return false;
-		}
-
 		private static void Revive()
 		{
-			reviveStarted = false;
 			state = PlayerState.Default;
 			StopBleedOut();
 
-			if (isRagdolled(physRig))
+			if (isRagdolled())
 			{
 				rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
 				RagdollPlayerMod.UnragdollRig(rig);
@@ -231,24 +235,23 @@ namespace Downed
 
 		private static void DownPlayer()
 		{
-			Player_Health playerHealth = rig.health.TryCast<Player_Health>(); // Using Revive() from the game causes issues in fusion.
 			state = PlayerState.Downed;
-			playerHealth.LifeSavingDamgeDealt();
+			playerHealth.LifeSavingDamgeDealt(); // Using Revive() from the game's code causes flinging in Fusion.
 		}
 
-		private static bool isRagdolled(PhysicsRig physRig)
+		private static bool isRagdolled()
 		{
 		    return physRig.torso.shutdown || !physRig.ballLocoEnabled;
 		}
 
-		private static bool forceReviveInput(BaseController controller)
+		private static bool forceReviveInput()
 		{
 		    bool isDown = controller.GetThumbStickDown();
 		    const float DoubleTapTimer = 0.32f;
 
 		    if (isDown && ragdollNextButton) // Double click
 		    {
-		        if (currentTime - lastTimeInput <= DoubleTapTimer)
+		        if (Time.time - lastTimeInput <= DoubleTapTimer)
 		        {
 		            return true;
 		        }
@@ -258,10 +261,10 @@ namespace Downed
 		    }
 		    else if (isDown) // First click
 		    {
-		        lastTimeInput = currentTime;
+		        lastTimeInput = Time.time;
 		        ragdollNextButton = true;
 		    }
-		    else if (currentTime - lastTimeInput > DoubleTapTimer) // Reset after timer
+		    else if (Time.time - lastTimeInput > DoubleTapTimer) // Reset after timer
 		    {
 		        ragdollNextButton = false;
 		        lastTimeInput = 0f;
@@ -274,7 +277,6 @@ namespace Downed
         {
             if (bleedOutCoroutine != null) return;
             bleedOutCoroutine = MelonCoroutines.Start(BleedOutRoutine());
-            return;
         }
 
         private static IEnumerator BleedOutRoutine()
@@ -289,12 +291,12 @@ namespace Downed
                 yield return null;
             }
 
-            bleedOutCoroutine = null;
-
             if (isDowned())
             {
                 KillPlayer();
             }
+            
+            bleedOutCoroutine = null;
         }
 
         private static void StopBleedOut()
