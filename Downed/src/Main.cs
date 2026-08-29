@@ -37,7 +37,7 @@ namespace Downed
 		private static float grabStartTime;
 		private static bool reviveStarted;
 		private static bool firstSkipped;
-		private static object bleedOutCoroutine;
+		private static object bleedOutRoutine;
 
 		private static float lastTimeInput;
 		private static bool ragdollNextButton;
@@ -136,7 +136,7 @@ namespace Downed
 				if (regenRoutine == null)
 				{
 					regenRoutine = playerHealth.regenRoutine;
-					return; // Check again untill it is found.
+					return; // Check again in case it is still null.
 				}
 				playerHealth.StopCoroutine(regenRoutine); // Stop regenerating while downed
 				return;
@@ -146,10 +146,8 @@ namespace Downed
 			if (state == PlayerState.Dead && !physRig.shutdown)
 			{
 				physRig.ShutdownRig();
-				return;
 			}
-			
-			if (reviveChecks())
+			else if (reviveChecks())
 			{
 				Revive();
 			}
@@ -287,8 +285,8 @@ namespace Downed
 
         private static void StartBleedOut()
         {
-            if (bleedOutCoroutine != null) return;
-            bleedOutCoroutine = MelonCoroutines.Start(BleedOutRoutine());
+            if (bleedOutRoutine != null) return;
+            bleedOutRoutine = MelonCoroutines.Start(BleedOutRoutine());
         }
 
         private static IEnumerator BleedOutRoutine()
@@ -308,14 +306,14 @@ namespace Downed
                 KillPlayer();
             }
             
-            bleedOutCoroutine = null;
+            bleedOutRoutine = null;
         }
 
         private static void StopBleedOut()
         {
-            if (bleedOutCoroutine == null) return;
-            MelonCoroutines.Stop(bleedOutCoroutine);
-            bleedOutCoroutine = null;
+            if (bleedOutRoutine == null) return;
+            MelonCoroutines.Stop(bleedOutRoutine);
+            bleedOutRoutine = null;
         }
 	}
 }
