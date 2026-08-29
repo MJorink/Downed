@@ -32,6 +32,7 @@ namespace Downed
 		private static RigManager rig;
 		private static PhysicsRig physRig;
 		private static Player_Health playerHealth;
+		private static Coroutine regenRoutine;
 
 		private static float grabStartTime;
 		private static bool reviveStarted;
@@ -127,16 +128,31 @@ namespace Downed
 		{
 			if (!isModAllowed()) return;
 
-			if (isDowned() && !isRagdolled() && !UIRig.Instance.popUpMenu.m_IsCursorShown && !rig.activeSeat)
+			if (isDowned())
 			{
-				RagdollPlayerMod.RagdollRig(rig);
-				StartBleedOut();
+				if (!isRagdolled())
+				{
+					RagdollPlayerMod.RagdollRig(rig);
+					StartBleedOut();
+				}
+
+				if (regenRoutine == null)
+				{
+					regenRoutine = playerHealth.regenRoutine;
+					return; // Check again untill it is found.
+				}
+				playerHealth.StopCoroutine(regenRoutine); // Stop regenerating while downed
+				return;
 			}
-			else if (state == PlayerState.Dead && !physRig.shutdown)
+			firstSkipped = false;
+			
+			if (state == PlayerState.Dead && !physRig.shutdown)
 			{
 				physRig.ShutdownRig();
+				return;
 			}
-			else if (reviveChecks())
+			
+			if (reviveChecks())
 			{
 				Revive();
 			}
@@ -209,7 +225,6 @@ namespace Downed
 				return false;
 			}
 			
-			firstSkipped = false;
 			reviveStarted = false;
 			return false;
 		}
