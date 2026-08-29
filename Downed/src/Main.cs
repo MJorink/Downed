@@ -98,6 +98,8 @@ namespace Downed
 			physRig = Player.PhysicsRig;
 			controller = Player.RightController;
 			playerHealth = rig.health.TryCast<Player_Health>();
+			
+			state = PlayerState.Default; // Reset on level load just to be sure.
 
 			var torso = physRig.torso;
 			var leftHand = physRig.leftHand.physHand;
@@ -117,11 +119,6 @@ namespace Downed
 				rightHand.gShoulder,
 				rightHand.gElbow,
 			};
-			
-			if (isModAllowed())
-			{
-				Revive(); // Reset everything on level load just to be sure
-			}
 		}
 
 		public override void OnUpdate()
