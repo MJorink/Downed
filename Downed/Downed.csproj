@@ -10,6 +10,9 @@
 		<Reference Include="BoneLib">
 			<HintPath>$(HOME)/repos/BL-Libs/Mods/BoneLib.dll</HintPath>
 		</Reference>
+		<Reference Include="JLib">
+		  <HintPath>$(HOME)/repos/JLib/Staging/Thunderstore/Mods/JLib.dll</HintPath>
+		</Reference>
 		<Reference Include="RagdollPlayer">
 		  <HintPath>$(HOME)/repos/BL-Libs/Mods/RagdollPlayer.dll</HintPath>
 		</Reference>
