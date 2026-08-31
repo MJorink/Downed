@@ -1,6 +1,5 @@
 # Downed
 A BoneLab mod that makes you go downed before dying, while downed you can get revived! <br>
-Last tested on `Patch 6` <br>
 
 ## Dependencies
 [Ragdoll Player](https://thunderstore.io/c/bonelab/p/Lakatrazz/Ragdoll_Player/) by Lakatrazz <br>
@@ -14,7 +13,7 @@ Ways to get revived: <br>
 - Double-pressing the right joystick (manual force-revive)
 
 While downed you will 'bleed out' in 20 seconds, 'bleeding' will pause while being grabbed/revived. <br>
-*there is no actual blood effect, you just die after 20 seconds* <br>
+*there is no actual blood effect, you just die after 20 seconds*
 
 ## Discord Server
 Join the Discord server to chat, give suggestions, report issues, and get sneak peeks! <br>

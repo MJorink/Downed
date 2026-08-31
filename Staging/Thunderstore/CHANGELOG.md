@@ -1,5 +1,5 @@
 **v1.2.0**
-- Code cleanup, now uses JLib
+- Rewrite with JLib
 
 **v1.1.4**
 - Fix mod not working on Quest standalone
