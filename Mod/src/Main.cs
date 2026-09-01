@@ -156,8 +156,8 @@ namespace downed
 
 			if (!isRagdolled) return;
 
-			rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
 			RagdollPlayerMod.UnragdollRig(rig);
+			rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
 		}
 
 		private void DownPlayer()
