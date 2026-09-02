@@ -4,14 +4,13 @@ using MelonLoader;
 using UnityEngine;
 using BoneLib;
 using Il2CppSLZ.Marrow;
-using RagdollPlayer;
 using jlib;
 
 namespace downed
 {
 	public class Downed : MelonMod
 	{
-		public const string Version = "1.2.0";
+		public const string Version = "2.0.0";
 
 		private const float ReviveDuration = 5f;
 		private const float BleedOutDuration = 20f;
@@ -36,6 +35,8 @@ namespace downed
 		private float lastTimeInput;
 		private bool ragdollNextButton;
 
+		private bool isFusionInstalled;
+
 		public override void OnInitializeMelon()
 		{
 			var menu = JLib.Register("Downed", Color.magenta);
@@ -47,6 +48,8 @@ namespace downed
 			Hooking.OnPlayerDamageReceived += OnPlayerDamageReceived;
 			Hooking.OnPlayerResurrected += OnPlayerResurrected;
 			Hooking.OnPlayerDeath += OnPlayerDeath;
+
+			isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
 		}
 
 		private void OnLevelLoaded(LevelInfo levelInfo)
@@ -81,7 +84,7 @@ namespace downed
 			{
 				if (!isRagdolled)
 				{
-					RagdollPlayerMod.RagdollRig(rig);
+					RagdollPlayer();
 					StartBleedOut();
 				}
 
@@ -94,6 +97,30 @@ namespace downed
 
 			if (state == PlayerState.Dead && !physRig.shutdown) physRig.ShutdownRig();
 			else if (reviveChecks()) Revive();
+		}
+
+		// RagdollPlayer ARM_CONTROL copy 
+		// https://thunderstore.io/c/bonelab/p/Lakatrazz/Ragdoll_Player/
+		private void RagdollPlayer()
+		{
+			physRig.RagdollRig();
+			physRig.DisableBallLoco();
+			physRig.PhysicalLegs();
+			physRig.legLf.ShutdownLimb();
+			physRig.legRt.ShutdownLimb();
+		}
+
+		private void UnragdollPlayer()
+		{
+			var feet = physRig.feet.transform;
+			var knee = physRig.knee.transform;
+			var pelvis = physRig.m_pelvis;
+
+			physRig.TurnOnRig();
+			physRig.UnRagdollRig();
+
+			knee.SetPositionAndRotation(pelvis.position, pelvis.rotation);
+			feet.SetPositionAndRotation(pelvis.position, pelvis.rotation);
 		}
 
 		private void OnPlayerDamageReceived(RigManager rig, float damage)
@@ -126,10 +153,10 @@ namespace downed
 
 		private bool FusionCompat()
 		{
-			if (FindMelon("LabFusion", "Lakatrazz") == null) return true;
+			if (!isFusionInstalled) return true;
 			if (!LabFusion.Network.NetworkInfo.HasServer) return true;
 			if (LabFusion.SDK.Gamemodes.GamemodeManager.ActiveGamemode != null) return false;
-			return !LabFusion.Preferences.Server.SavedServerSettings.Knockout.Value;
+			return !LabFusion.Preferences.CommonPreferences.Knockout;
 		}
 
 		private bool reviveChecks()
@@ -156,7 +183,7 @@ namespace downed
 
 			if (!isRagdolled) return;
 
-			RagdollPlayerMod.UnragdollRig(rig);
+			UnragdollPlayer();
 			rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
 		}
 

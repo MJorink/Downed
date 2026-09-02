@@ -1,5 +1,7 @@
-**v1.2.0**
+**v2.0.0**
 - Rewrite with JLib
+- Ragdolling is now built in
+- Fix fusion knockout setting compat (disables downed when knockout is enabled)
 
 **v1.1.4**
 - Fix mod not working on Quest standalone

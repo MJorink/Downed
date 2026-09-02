@@ -13,9 +13,6 @@
 		<Reference Include="JLib">
 		  <HintPath>$(HOME)/repos/JLib/Staging/Thunderstore/Mods/JLib.dll</HintPath>
 		</Reference>
-		<Reference Include="RagdollPlayer">
-		  <HintPath>$(HOME)/repos/BL-Libs/Mods/RagdollPlayer.dll</HintPath>
-		</Reference>
 		<Reference Include="LabFusion">
 		  <HintPath>$(HOME)/repos/BL-Libs/Mods/LabFusion.dll</HintPath>
 		</Reference>
