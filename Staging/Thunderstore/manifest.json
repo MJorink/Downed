@@ -5,6 +5,7 @@
     "description": "A BONELAB mod that makes you go downed before dying, while downed you can get revived!",
     "dependencies": [
          "bonelib-BoneLib-3.2.2",
+         "BreadSoup-RagdollFix-2.0.0",
          "Jorink-JLib-1.0.0"
     ]
 }

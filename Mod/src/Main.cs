@@ -25,7 +25,7 @@ namespace downed
 		private RigManager rig;
 		private PhysicsRig physRig;
 		private BaseController controller;
-		private Grip[] playerGrips;
+		private Grip[] playerGrips = System.Array.Empty<Grip>();
 
 		private object bleedOutRoutine;
 		private float grabStartTime;
@@ -34,8 +34,6 @@ namespace downed
 
 		private float lastTimeInput;
 		private bool ragdollNextButton;
-
-		private bool isFusionInstalled;
 
 		public override void OnInitializeMelon()
 		{
@@ -48,8 +46,6 @@ namespace downed
 			Hooking.OnPlayerDamageReceived += OnPlayerDamageReceived;
 			Hooking.OnPlayerResurrected += OnPlayerResurrected;
 			Hooking.OnPlayerDeath += OnPlayerDeath;
-
-			isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
 		}
 
 		private void OnLevelLoaded(LevelInfo levelInfo)
@@ -76,6 +72,10 @@ namespace downed
 		private bool isDowned => state == PlayerState.Downed;
 		private bool isRagdolled => physRig.torso.shutdown || !physRig.ballLocoEnabled;
 
+		// BoneLib hooks are fired for every rig in the scene, this means that Fusion players are included too.
+		// Without this check, another player dying would down or kill everyone who has this mod installed.
+		private bool isLocalRig(RigManager hookRig) => isModAllowed && hookRig == Player.RigManager;
+
 		public override void OnUpdate()
 		{
 			if (!isModAllowed) return;
@@ -91,16 +91,14 @@ namespace downed
 				// Stop regenerating while downed
 				var health = JLib.playerHealth;
 				if (health != null && health.regenRoutine != null) health.StopCoroutine(health.regenRoutine);
-				return;
 			}
-			firstSkipped = false;
+			else firstSkipped = false;
 
 			if (state == PlayerState.Dead && !physRig.shutdown) physRig.ShutdownRig();
-			else if (reviveChecks()) Revive();
+
+			if (reviveChecks()) Revive();
 		}
 
-		// RagdollPlayer ARM_CONTROL copy 
-		// https://thunderstore.io/c/bonelab/p/Lakatrazz/Ragdoll_Player/
 		private void RagdollPlayer()
 		{
 			physRig.RagdollRig();
@@ -125,7 +123,7 @@ namespace downed
 
 		private void OnPlayerDamageReceived(RigManager rig, float damage)
 		{
-			if (!isModAllowed || rig.health.curr_Health > 0f) return;
+			if (!isLocalRig(rig) || rig.health.curr_Health > 0f) return;
 
 			if (state == PlayerState.Default) DownPlayer();
 			else if (state == PlayerState.Downed) KillPlayer();
@@ -133,14 +131,14 @@ namespace downed
 
 		private void OnPlayerDeath(RigManager rig)
 		{
-			if (!isModAllowed || stayRagdolled.Value) return;
+			if (!isLocalRig(rig) || stayRagdolled.Value) return;
 			Revive();
 		}
 
 		// Used for reviving with SDK mods
 		private void OnPlayerResurrected(RigManager rig)
 		{
-			if (!isModAllowed || state == PlayerState.Default) return;
+			if (!isLocalRig(rig) || state == PlayerState.Default) return;
 
 			// Skip first revive because LifeSavingDamgeDealt() will trigger OnPlayerResurrected() in DownPlayer().
 			if (isDowned && !firstSkipped)
@@ -153,7 +151,9 @@ namespace downed
 
 		private bool FusionCompat()
 		{
+			var isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
 			if (!isFusionInstalled) return true;
+			
 			if (!LabFusion.Network.NetworkInfo.HasServer) return true;
 			if (LabFusion.SDK.Gamemodes.GamemodeManager.ActiveGamemode != null) return false;
 			return !LabFusion.Preferences.CommonPreferences.Knockout;
@@ -184,7 +184,6 @@ namespace downed
 			if (!isRagdolled) return;
 
 			UnragdollPlayer();
-			rig.Teleport(physRig.feet.transform.position + new Vector3(0, 0.25f, 0));
 		}
 
 		private void DownPlayer()
