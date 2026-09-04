@@ -71,9 +71,6 @@ namespace downed
 		private bool isModAllowed => enableMod.Value && rig && FusionCompat();
 		private bool isDowned => state == PlayerState.Downed;
 		private bool isRagdolled => physRig.torso.shutdown || !physRig.ballLocoEnabled;
-
-		// BoneLib hooks are fired for every rig in the scene, this means that Fusion players are included too.
-		// Without this check, another player dying would down or kill everyone who has this mod installed.
 		private bool isLocalRig(RigManager hookRig) => isModAllowed && hookRig == Player.RigManager;
 
 		public override void OnUpdate()
@@ -131,8 +128,7 @@ namespace downed
 
 		private void OnPlayerDeath(RigManager rig)
 		{
-			if (!isLocalRig(rig) || stayRagdolled.Value) return;
-			Revive();
+			if (isLocalRig(rig) && !stayRagdolled.Value) Revive();
 		}
 
 		// Used for reviving with SDK mods
@@ -151,8 +147,7 @@ namespace downed
 
 		private bool FusionCompat()
 		{
-			var isFusionInstalled = RegisteredMelons.Any(m => m.Info.Name == "LabFusion");
-			if (!isFusionInstalled) return true;
+			if (!JLib.isFusionInstalled) return true;
 			
 			if (!LabFusion.Network.NetworkInfo.HasServer) return true;
 			if (LabFusion.SDK.Gamemodes.GamemodeManager.ActiveGamemode != null) return false;

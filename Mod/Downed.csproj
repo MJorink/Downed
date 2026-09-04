@@ -8,37 +8,37 @@
   </PropertyGroup>
 	<ItemGroup>
 		<Reference Include="BoneLib">
-			<HintPath>$(HOME)/repos/BL-Libs/Mods/BoneLib.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/Mods/BoneLib.dll</HintPath>
 		</Reference>
 		<Reference Include="JLib">
-		  <HintPath>$(HOME)/repos/JLib/Staging/Thunderstore/Mods/JLib.dll</HintPath>
+		  <HintPath>$(HOME)/repos/BONELAB/JLib/Staging/Thunderstore/Mods/JLib.dll</HintPath>
 		</Reference>
 		<Reference Include="LabFusion">
-		  <HintPath>$(HOME)/repos/BL-Libs/Mods/LabFusion.dll</HintPath>
+		  <HintPath>$(HOME)/repos/BONELAB/BL-Libs/Mods/LabFusion.dll</HintPath>
 		</Reference>
 		<Reference Include="MelonLoader">
-			<HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/net6/MelonLoader.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/net6/MelonLoader.dll</HintPath>
 		</Reference>
 		<Reference Include="UnityEngine">
-			<HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/Il2CppAssemblies/UnityEngine.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/Il2CppAssemblies/UnityEngine.dll</HintPath>
 		</Reference>
 		<Reference Include="UnityEngine.CoreModule">
-			<HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/Il2CppAssemblies/UnityEngine.CoreModule.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/Il2CppAssemblies/UnityEngine.CoreModule.dll</HintPath>
 		</Reference>
 		<Reference Include="Il2CppSLZ.Marrow">
-			<HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Il2CppSLZ.Marrow.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Il2CppSLZ.Marrow.dll</HintPath>
 		</Reference>
 		<Reference Include="Il2Cppmscorlib">
-			<HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Il2Cppmscorlib.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Il2Cppmscorlib.dll</HintPath>
 		</Reference>
 		<Reference Include="Il2CppInterop.Runtime">
-			<HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath>
+			<HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/net6/Il2CppInterop.Runtime.dll</HintPath>
 		</Reference>
 		<Reference Include="Assembly-CSharp">
-		  <HintPath>$(HOME)/repos/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Assembly-CSharp.dll</HintPath>
+		  <HintPath>$(HOME)/repos/BONELAB/BL-Libs/PC/MelonLoader/Il2CppAssemblies/Assembly-CSharp.dll</HintPath>
 		</Reference>
 	</ItemGroup>	
 	<Target Name="CopyOutput" AfterTargets="Build">
-		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HOME)/repos/Downed/Staging/Thunderstore/Mods"/>
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(HOME)/repos/BONELAB/Downed/Staging/Thunderstore/Mods"/>
 	</Target>
 </Project>
