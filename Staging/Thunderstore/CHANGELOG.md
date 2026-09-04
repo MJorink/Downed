@@ -1,3 +1,6 @@
+**v2.0.1**
+- Fixed stayRagdolled setting bugging you out when trying to unragdoll with RagdollPlayer
+
 **v2.0.0**
 - Rewrite with JLib
 - Ragdolling is now built in

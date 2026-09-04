@@ -40,7 +40,7 @@ namespace downed
 			var menu = JLib.Register("Downed", Color.magenta);
 
 			enableMod = menu.Bool("Enable Mod", true, Color.green);
-			stayRagdolled = menu.Bool("Stay Ragdolled", false, Color.yellow);
+			stayRagdolled = menu.Bool("Stay Ragdolled (Dead)", false, Color.yellow);
 
 			Hooking.OnLevelLoaded += OnLevelLoaded;
 			Hooking.OnPlayerDamageReceived += OnPlayerDamageReceived;
@@ -128,7 +128,7 @@ namespace downed
 
 		private void OnPlayerDeath(RigManager rig)
 		{
-			if (isLocalRig(rig) && !stayRagdolled.Value) Revive();
+			if (isLocalRig(rig)) Revive();
 		}
 
 		// Used for reviving with SDK mods
@@ -156,7 +156,12 @@ namespace downed
 
 		private bool reviveChecks()
 		{
-			if (forceReviveInput() && isRagdolled) return true; // Force revive
+			if (forceReviveInput())
+			{
+				state = PlayerState.Default;
+				StopBleedOut();
+				if (isRagdolled) UnragdollPlayer();
+			}
 
 			if (!isDowned || !playerGrips.Any(g => g.HasAttachedHands()))
 			{
@@ -175,10 +180,7 @@ namespace downed
 		{
 			state = PlayerState.Default;
 			StopBleedOut();
-
-			if (!isRagdolled) return;
-
-			UnragdollPlayer();
+			if (isRagdolled && !stayRagdolled.Value) UnragdollPlayer();
 		}
 
 		private void DownPlayer()
